@@ -12,6 +12,8 @@ We demonstrate a workflow that:
 2. Displays the contents of the chain for learning purposes.
 3. Corrects malformed SQL queries with a custom chain.
 4. Executes the final SQL query using the `QuerySQLDataBaseTool`.
+5. Uses SQLDatabaseToolkit to dynamically inspect tools and schemas.
+6. Implements an agent for interactive SQL query handling.
 
 ---
 
@@ -33,6 +35,9 @@ from langchain.schema.runnable import RunnablePassthrough
 from langchain.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
 from langchain.output_parsers import StrOutputParser
 from langchain.chains.sql import create_sql_query_chain
+from langchain_community.agent_toolkits import SQLDatabaseToolkit
+from langchain_core.messages import SystemMessage, HumanMessage
+from langgraph.prebuilt import create_react_agent
 ```
 
 ---
@@ -177,12 +182,54 @@ print(result)
 
 ---
 
+## 7. Using SQLDatabaseToolkit
 
-## 7. Conclusion
+### Initialize Toolkit and Display Tools
+
+```python
+toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+
+tools = toolkit.get_tools()
+print(tools)
+```
+
+This outputs the available tools and their schema for inspecting the database.
+
+---
+
+## 8. Implementing SQL Query Agent
+
+```python
+SQL_PREFIX = """You are an agent designed to interact with a SQL database..."""
+system_message = SystemMessage(content=SQL_PREFIX)
+agent_executor = create_react_agent(llm, tools, state_modifier=system_message, debug=False)
+
+question = "How many employees are there?"
+for s in agent_executor.stream({"messages": [HumanMessage(content=question)]}):
+    print(s)
+    print("----")
+```
+
+This creates an interactive agent capable of generating and validating SQL queries step-by-step.
+
+---
+
+## 9. Key Notes
+
+- **Validation**: Ensure the SQL syntax is validated before execution.
+- **Security**: Sanitize inputs to avoid SQL injection vulnerabilities.
+- **Observability**: Use logs to trace errors and outputs during execution.
+
+---
+
+## 10. Conclusion
 
 This workflow demonstrates how to:
 
 1. Use LLMs to dynamically generate and correct SQL queries.
 2. Execute the corrected queries against a database.
 3. Inspect prompts and chains for educational insights.
+4. Use agents for interactive query validation and execution.
+
+This modular design allows flexibility and scalability for database interaction tasks driven by natural language queries.
 
